@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1532794003 source:d:\data\documents\c games\adventure\main.c
+	<stdio.h>
+	<stdlib.h>
+	<string.h>
+
