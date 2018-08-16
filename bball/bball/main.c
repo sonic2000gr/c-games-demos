@@ -105,9 +105,10 @@ int main(int argc, char* argv[]) {
       // Use random coordinates from 100 to 400
 
       coord[i].x = rand() % 301 + 100;
-      coord[i].y = rand() % 301 + 100;git
+      coord[i].y = rand() % 301 + 100;
 
       // Use random speeds from -5.0f to +5.0f
+
 
       ux[i] = (rand() % 11 - 5) / 10.0f;
       uy[i] = (rand() % 11 - 5) / 10.0f;
