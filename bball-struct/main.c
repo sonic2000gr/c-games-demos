@@ -12,10 +12,6 @@
 
 #define FRAME_MS 17
 
-// NBALLS -> Number of balls to draw on screen
-
-#define NBALLS 6
-
 // Window WIDTH and HEIGHT
 
 #define WIDTH 600
@@ -24,29 +20,62 @@
 SDL_Window* window;
 SDL_Surface* screen;
 
-void move(SDL_Surface* ball, float* ux, float* uy, uint32_t elapsedTime, SDL_Rect* coord) {
-    coord->x = coord->x + (*ux) * elapsedTime;
-    coord->y = coord->y + (*uy) * elapsedTime;
-    if(coord->x > WIDTH - ball->w) {
-        *ux = -(*ux);
-        coord->x = WIDTH - ball->w;
+typedef struct {
+    SDL_Surface* ball;
+    float ux;
+    float uy;
+    SDL_Rect coord;
+} sprite;
+
+void move(sprite* b, uint32_t elapsedTime) {
+    b->coord.x = b->coord.x + b->ux * elapsedTime;
+    b->coord.y = b->coord.y + b->uy * elapsedTime;
+    if(b->coord.x > WIDTH - b->ball->w) {
+        b->ux = -b->ux;
+        b->coord.x = WIDTH - b->ball->w;
 
     }
 
-    if(coord->x < 0)   {
-        *ux = -(*ux);
-        coord->x = 0;
+    if(b->coord.x < 0)   {
+        b->ux = -b->ux;
+        b->coord.x = 0;
     }
 
-    if(coord->y > HEIGHT - ball->h)   {
-        *uy = -(*uy);
-        coord->y = HEIGHT - ball->h;
+    if(b->coord.y > HEIGHT - b->ball->h)   {
+        b->uy = -b->uy;
+        b->coord.y = HEIGHT - b->ball->h;
     }
 
-    if(coord->y < 0)   {
-        *uy = -(*uy);
-        coord->y = 0;
+    if(b->coord.y < 0)   {
+        b->uy = -b->uy;
+        b->coord.y = 0;
     }
+}
+
+void init(sprite* b)    {
+
+      b->ball = IMG_Load("ball1.png");
+
+      if (!b->ball) {
+        printf("Failed to load bitmap!\n");
+        exit(1);
+      }
+      b->coord.x = rand() % 301 + 100;
+      b->coord.y = rand() % 301 + 100;
+
+      b->ux = (rand() % 11 - 5) / 10.0f;
+      b->uy = (rand() % 11 - 5) / 10.0f;
+
+      if(b->ux > 0 && b->ux <= 0.1f)
+        b->ux = 0.2f;
+      if(b->ux < 0 && b->ux >= -0.1f)
+        b->ux = -0.2f;
+      if(b->uy > 0 && b->uy <= 0.1f)
+        b->uy = 0.2f;
+      if(b->uy < 0 && b->uy >= -0.1f)
+        b->uy = -0.2f;
+
+
 }
 
 int main(int argc, char* argv[]) {
@@ -54,17 +83,13 @@ int main(int argc, char* argv[]) {
 
     // x and y coordinates for balls
 
-    SDL_Rect coord[NBALLS];
-    SDL_Surface* ball[NBALLS];
+    sprite theball;
 
     int running = 1; // This is to keep the main loop in operation
-    int i;
 
     uint32_t elapsedTime, currentTime, lastTime;
 
     // x-axis and y-axis speeds for balls
-
-    float ux[NBALLS], uy[NBALLS];
 
     // Initialize SDL library or fail and exit
 
@@ -73,7 +98,7 @@ int main(int argc, char* argv[]) {
 
     // Attempt to create window
 
-    window = SDL_CreateWindow("Bouncing Balls",
+    window = SDL_CreateWindow("Bouncing Ball",
                               SDL_WINDOWPOS_CENTERED,
                               SDL_WINDOWPOS_CENTERED,
                               WIDTH, HEIGHT,
@@ -88,46 +113,14 @@ int main(int argc, char* argv[]) {
     screen = SDL_GetWindowSurface(window);
 
     srand(time(NULL));
-    for(i = 0; i < NBALLS; i++)   {
 
-      /* ball does not need to be an array
-         when using a single image, but this is
-         for demo purposes
-         SDL_image allow the use of png images
-         that support transparency */
+    init(&theball);
 
-      ball[i] = IMG_Load("ball2.png");
-      if (!ball[i]) {
-        printf("Failed to load bitmap!\n");
-        exit(1);
-      }
-
-      // Use random coordinates from 100 to 400
-
-      coord[i].x = rand() % 301 + 100;
-      coord[i].y = rand() % 301 + 100;
-
-      // Use random speeds from -5.0f to +5.0f
-
-
-      ux[i] = (rand() % 11 - 5) / 10.0f;
-      uy[i] = (rand() % 11 - 5) / 10.0f;
-
-      // Adjust speeds to prevent edge cases
-
-      if(ux[i] > 0 && ux[i] <= 0.1f)
-        ux[i] = 0.2f;
-      if(ux[i] < 0 && ux[i] >= -0.1f)
-        ux[i] = -0.2f;
-      if(uy[i] > 0 && uy[i] <= 0.1f)
-        uy[i] = 0.2f;
-      if(uy[i] < 0 && uy[i] >= -0.1f)
-        uy[i] = -0.2f;
-    }
 
     SDL_GL_SetSwapInterval(1);
 
     lastTime = SDL_GetTicks();
+
     while(running) {
 
         // Get millis since SDL initialization
@@ -162,8 +155,8 @@ int main(int argc, char* argv[]) {
 
         // Compute new positions for the balls
 
-        for(i = 0; i < NBALLS; i++)
-          move(ball[i], &ux[i], &uy[i], elapsedTime, &coord[i]);
+
+          move(&theball, elapsedTime);
 
         // Fill the window with color
 
@@ -171,8 +164,8 @@ int main(int argc, char* argv[]) {
 
         // Blit the balls to their new locations
 
-        for(i = 0; i < NBALLS; i++)
-          SDL_BlitSurface(ball[i], 0, screen, &coord[i]);
+
+        SDL_BlitSurface(theball.ball, 0, screen, &theball.coord);
 
         // Update frame and save the time
 

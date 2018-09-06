@@ -1,11 +1,12 @@
 # depslib dependency file v1.0
-1534606035 source:d:\data\documents\github\c-games-demos\bball\bball\main.c
+1536244132 source:d:\data\documents\github\c-games-demos\adventure-sdl\main.c
 	<stdio.h>
 	<stdlib.h>
 	<conio.h>
 	<SDL.h>
 	<SDL_image.h>
 	<time.h>
+	<SDL_ttf.h>
 
 1519925811 c:\sdl2\include\sdl2\sdl.h
 	"SDL_main.h"
@@ -344,6 +345,11 @@
 1519936451 c:\sdl2_image\include\sdl2\sdl_image.h
 	"SDL.h"
 	"SDL_version.h"
+	"begin_code.h"
+	"close_code.h"
+
+1454366533 c:\sdl2_ttf\include\sdl2\sdl_ttf.h
+	"SDL.h"
 	"begin_code.h"
 	"close_code.h"
 

@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1534606035 source:d:\data\documents\github\c-games-demos\bball\bball\main.c
+1534871815 source:d:\data\documents\github\c-games-demos\bball-struct\main.c
 	<stdio.h>
 	<stdlib.h>
 	<conio.h>
