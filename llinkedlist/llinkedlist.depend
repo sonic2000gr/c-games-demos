@@ -1,0 +1,6 @@
+# depslib dependency file v1.0
+1557672769 source:d:\data\documents\c programs\llinkedlist\main.c
+	<stdio.h>
+	<stdlib.h>
+	<stdbool.h>
+
