@@ -6,13 +6,14 @@
 */
 
 #include <SDL.h>
+#include <SDL_image.h>
 #include <SDL_ttf.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#define WIDTH 430
-#define HEIGHT 240
+#define WIDTH 1440
+#define HEIGHT 900
 #define LARGEFONT 32
 #define SMALLFONT 24
 #define COLORS 15
@@ -174,7 +175,7 @@ int mainloop(Sizer windowsize) {
 
     char msg[32];
     Positioner textpos = setPos(0,0);
-    //deleteRenderList(&head);
+    deleteRenderList(&head);
     logopos = setPos(13,6);
     logovisible = true;
     textpos = setPos(1,3);
@@ -275,6 +276,7 @@ int mainloop(Sizer windowsize) {
                                                      element->textobject->surfacecolor.g,
                                                      element->textobject->surfacecolor.b));
           SDL_BlitSurface(msg2, 0, screen, &textrect);
+          SDL_FreeSurface(msg2);
           element = element->next;
         }
         if (logovisible) {
