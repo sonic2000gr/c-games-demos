@@ -64,6 +64,21 @@ typedef struct list {
         struct list* next;
         } Renderlist;
 
+void z80_write(void);
+void deleteRenderList(void);
+Textrenderer* addText(char[], SDL_Color, SDL_Color);
+void translatePos(Positioner, SDL_Rect*);
+int addtoRenderList(Textrenderer*);
+void nextLinePos();
+void nextCharPos();
+Positioner setPos(int, int);
+void showTI();
+int mainloop(Sizer);
+void getWindowSize(Sizer, Sizer*);
+void getWindowPos(Sizer, Sizer);
+bool initialize(Sizer*);
+
+
 SDL_Surface* rainbowlogo;
 SDL_Color bordercolor = Red;
 SDL_Color maincolor = Cyan;
@@ -71,69 +86,234 @@ SDL_Color maincolor = Cyan;
 // These affect our environment globally
 
 Positioner windowpos;
-int fontsize;
+Positioner logopos;
+Positioner textpos;
 
-Textrenderer* addText(Positioner mypos, char textmsg[32], SDL_Color textcolor, SDL_Color surfacecolor) {
+bool logovisible = false,  showti = false;
+int fontsize;
+int waiting = 0;
+int queue[3];
+int qp = 0;
+int data = 0;
+
+Renderlist *head = NULL;
+Renderlist *last = NULL;
+
+
+void z80_write(void) {
+  /*  mul = 1
+  data = 0
+  for i in inchannel:
+      #data += GPIO.input(i) * mul
+      mul = mul * 2
+
+  #print "Data ", data */
+
+  if (data == 255) {
+      // All reset
+      textpos = setPos(0,0);
+      logovisible = false;
+      deleteRenderList();
+      waiting = 0;
+      qp = 0;
+      return;
+  }
+  // Make logo visible
+
+  if (waiting == 0 && data == 128) {
+      logovisible = true;
+      return;
+  }
+
+  // Make logo invisible
+
+  if (waiting == 0 && data == 129) {
+      logovisible = false;
+      return;
+  }
+
+  // Clear screen - this does not affect logo
+
+  if (waiting == 0 && data == 254) {
+      // Clear screen
+      textpos = setPos(0,0);
+      deleteRenderList();
+      return;
+  }
+
+  if (waiting == 0 && data == 253) {
+      //Set position command, wait for two more bytes
+      waiting = 2;
+      queue[qp++] = data;
+      return;
+  }
+
+  if (waiting == 0 && data == 252) {
+      // Set logo position wait for two more bytes
+      waiting = 2;
+      queue[qp++] = data;
+      return;
+  }
+
+  if (waiting == 0 && data == 251) {
+      // Show TI Screen
+      showti = true;
+      qp = 0;
+      return;
+  }
+
+  if (waiting) {
+      queue[qp++] = data;
+      waiting = waiting - 1;
+      if (waiting == 0) {
+          // process queue
+          if (queue[0] == 253)
+              textpos = setPos(queue[1], queue[2]);
+          if (queue[0] == 252)
+              logopos = setPos(queue[1], queue[2]);
+          qp = 0;
+          return;
+      }
+      return;
+  }
+
+  if (data != 0) {
+      char msg = (char)data;
+      Textrenderer* thetext = addText(&msg, Black, Cyan);
+      addtoRenderList(thetext);
+      nextCharPos();
+  }
+  return;
+}
+
+Textrenderer* addText(char textmsg[32], SDL_Color textcolor, SDL_Color surfacecolor) {
   Textrenderer* renderer = (Textrenderer*)malloc(sizeof(Textrenderer));
   if (renderer == NULL)
     return NULL;
-  renderer->thepos = mypos;
+  renderer->thepos = textpos;
   strcpy(renderer->msg, textmsg);
   renderer->textcolor = textcolor;
   renderer->surfacecolor = surfacecolor;
   return renderer;
 }
 
-void translatePos(Positioner textpos, SDL_Rect* graphicspos) {
-  graphicspos->x = textpos.x * fontsize + windowpos.x;
-  graphicspos->y = textpos.y * fontsize + windowpos.y;
+void translatePos(Positioner thepos, SDL_Rect* graphicspos) {
+  graphicspos->x = thepos.x * fontsize + windowpos.x;
+  graphicspos->y = thepos.y * fontsize + windowpos.y;
 }
 
-int addtoRenderList(Renderlist **head, Renderlist **last, Textrenderer *thetext) {
+int addtoRenderList(Textrenderer *thetext) {
   Renderlist* node = (Renderlist*)malloc(sizeof(Renderlist));
   if (node == NULL)
     return 0;
   node->textobject = thetext;
   node->next = NULL;
-  if (*head == NULL) {
-    *head = node;
-    *last = *head;
+  if (head == NULL) {
+    head = node;
+    last = head;
     return 1;
   }
-  (*last)->next = node;
-  *last = node;
+  last->next = node;
+  last = node;
   return 1;
 }
 
-void deleteRenderList(Renderlist **head) {
+void deleteRenderList(void) {
   Renderlist *current, *next;
-  current = *head;
+  current = head;
   while (current != NULL) {
     next = current->next;
     free(current);
     current = next;
   }
-  *head = NULL;
+  head = NULL;
 }
 
-void nextLinePos(Positioner* thepos) {
-  thepos->y += 1;
-  thepos->x  = 0;
-  if (thepos->y == 25)
-    thepos->y = 0;
+void nextLinePos(void) {
+  textpos.y += 1;
+  textpos.x  = 0;
+  if (textpos.y == 25)
+    textpos.y = 0;
 }
 
-void nextCharPos(Positioner* thepos) {
-  thepos->x += 1;
-  if (thepos->x == 32) {
-    thepos->x = 0;
-    nextLinePos(thepos);
+void nextCharPos(void) {
+  textpos.x += 1;
+  if (textpos.x == 32) {
+    textpos.x = 0;
+    nextLinePos();
   }
 }
 
 Positioner setPos(int x, int y) {
   Positioner pos = {x,y};
   return pos;
+}
+
+void showTI() {
+    char msg[32];
+    textpos = setPos(0,0);
+    Textrenderer* textrender;
+    deleteRenderList();
+    logopos = setPos(13,6);
+    logovisible = true;
+    textpos = setPos(1,3);
+    for (int i = 0; i < COLORS; i++) {
+        strcpy(msg, "A");
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+    }
+    nextLinePos();
+    nextCharPos();
+    for (int i = 0; i < COLORS; i++) {
+        strcpy(msg, "A");
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+    }
+    textpos = setPos(6,10);
+    strcpy(msg, "THE RAINBOW PROJECT");
+    textrender = addText(msg, Black, Cyan);
+    addtoRenderList(textrender);
+    textpos = setPos(3,12);
+    strcpy(msg, "Z80 EXPERIMENTAL COMPUTER");
+    textrender = addText(msg, Black, Cyan);
+    addtoRenderList(textrender);
+    textpos = setPos(3, 18);
+    strcpy(msg, "READY - WAITING FOR Z80 CPU");
+    textrender = addText(msg, Black, Cyan);
+    addtoRenderList(textrender);
+    textpos = setPos(1,20);
+    for (int i = 0; i < COLORS; i++) {
+        strcpy(msg, "A");
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+    }
+    nextLinePos();
+    nextCharPos();
+    for (int i = 0; i < COLORS; i++) {
+        strcpy(msg, "A");
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+        textrender = addText(msg, allcolors[i], allcolors[i]);
+        addtoRenderList(textrender);
+        nextCharPos();
+    }
+    textpos = setPos(2,23);
+    strcpy(msg, "(C) 2017-2019 SCHOOLSPACE.GR");
+    textrender = addText(msg, Black, Cyan);
+    addtoRenderList(textrender);
 }
 
 int mainloop(Sizer windowsize) {
@@ -146,12 +326,7 @@ int mainloop(Sizer windowsize) {
     else
         thelogo = SDL_LoadBMP("logo3.bmp");
 
-    Renderlist* head = NULL;
-    Renderlist* last = NULL;
     Renderlist* element = NULL;
-    Positioner logopos;
-    bool logovisible = false;
-    Textrenderer* textrender;
     SDL_Rect textrect;
     SDL_Rect logorect;
     SDL_Rect cliprect;
@@ -171,75 +346,11 @@ int mainloop(Sizer windowsize) {
         exit(1);
     }
 
-    // Testing by TI Screen
-
-    char msg[32];
-    Positioner textpos = setPos(0,0);
-    deleteRenderList(&head);
-    logopos = setPos(13,6);
-    logovisible = true;
-    textpos = setPos(1,3);
-    for (int i = 0; i < COLORS; i++) {
-        strcpy(msg, "A");
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-    }
-    nextLinePos(&textpos);
-    nextCharPos(&textpos);
-    for (int i = 0; i < COLORS; i++) {
-        strcpy(msg, "A");
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-    }
-    textpos = setPos(6,10);
-    strcpy(msg, "THE RAINBOW PROJECT");
-    textrender = addText(textpos, msg, Black, Cyan);
-    addtoRenderList(&head, &last, textrender);
-    textpos = setPos(3,12);
-    strcpy(msg, "Z80 EXPERIMENTAL COMPUTER");
-    textrender = addText(textpos, msg, Black, Cyan);
-    addtoRenderList(&head, &last, textrender);
-    textpos = setPos(3, 18);
-    strcpy(msg, "READY - WAITING FOR Z80 CPU");
-    textrender = addText(textpos, msg, Black, Cyan);
-    addtoRenderList(&head, &last, textrender);
-    textpos = setPos(1,20);
-    for (int i = 0; i < COLORS; i++) {
-        strcpy(msg, "A");
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-    }
-    nextLinePos(&textpos);
-    nextCharPos(&textpos);
-    for (int i = 0; i < COLORS; i++) {
-        strcpy(msg, "A");
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-        textrender = addText(textpos, msg, allcolors[i], allcolors[i]);
-        addtoRenderList(&head, &last, textrender);
-        nextCharPos(&textpos);
-    }
-    textpos = setPos(2,23);
-    strcpy(msg, "(C) 2017-2019 SCHOOLSPACE.GR");
-    textrender = addText(textpos, msg, Black, Cyan);
-    addtoRenderList(&head,  &last, textrender);
 
     // program main loop
 
     bool done = false;
+    showTI();
     while (!done)
     {
         SDL_Event event;
@@ -285,7 +396,7 @@ int mainloop(Sizer windowsize) {
         }
         SDL_UpdateWindowSurface(window);
    }
-   deleteRenderList(&head);
+   deleteRenderList();
    return 0;
 }
 

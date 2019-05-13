@@ -361,11 +361,18 @@
 	"begin_code.h"
 	"close_code.h"
 
-1557733375 source:d:\data\documents\github\c-games-demos\displaypi\main.c
+1557745150 source:d:\data\documents\github\c-games-demos\displaypi\main.c
 	<SDL.h>
+	<SDL_image.h>
 	<SDL_ttf.h>
 	<stdio.h>
 	<stdlib.h>
 	<string.h>
 	<stdbool.h>
+
+1541001582 c:\sdl2_image\include\sdl2\sdl_image.h
+	"SDL.h"
+	"SDL_version.h"
+	"begin_code.h"
+	"close_code.h"
 
