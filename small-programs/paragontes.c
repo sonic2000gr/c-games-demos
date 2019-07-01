@@ -27,7 +27,7 @@ void factor(uint32_t n) {
  uint64_t i = 2;
  while (n != 1) {
   if (n % i == 0) {
-    printf("%d\t",i);
+    printf("%"PRIu64"\t",i);
     n = n / i;
   }  else
    i += 1;
@@ -39,8 +39,8 @@ int main(void)  {
 for (uint64_t i = 2; i <= 100; i++)
     if (isprime(i))
       if (isprime(pow(2,i)-1))
-        printf("%d\t",i);
+        printf("%"PRIu64"\t",i);
 printf("\n");
-factor(176389);
+factor(176388);
 return 0;
 }
