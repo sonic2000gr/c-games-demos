@@ -275,6 +275,7 @@ int mainloop(Sizer windowsize) {
                                                      element->textobject->surfacecolor.g,
                                                      element->textobject->surfacecolor.b));
           SDL_BlitSurface(msg2, 0, screen, &textrect);
+          SDL_FreeSurface(msg2);
           element = element->next;
         }
         if (logovisible) {
